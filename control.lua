@@ -18,6 +18,7 @@ local diagnostic_verbosity = 2;
 -- Ticks between nearby enemy checks.
 local enemy_check_period_ticks = 60;
 
+
 -- Log 'str' if we are at verbosity 'v' or higher.
 local function diag(v, str)
   if (v <= diagnostic_verbosity) then
@@ -25,6 +26,17 @@ local function diag(v, str)
   end;
 end;
 
+
+-- Get or create the status label.
+local function get_status_label(player)
+  gui_element = player.gui.top;
+  local label = gui_element["hrp_status"];
+  if (label == nil) then
+    -- This creates a simple text label in the top-left corner.
+    label = gui_element.add{type="label", name="hrp_status", caption=""}
+  end;
+  return label;
+end;
 
 
 -- Move all of the repair packs that are in `src_inv` to `dest_inv`.
@@ -83,6 +95,8 @@ local function check_player(player)
     diag(4, "    y: " .. character.position.y);
     diag(4, "    surface: " .. character.surface.name);
 
+    local label = get_status_label(player);
+
     local enemy_is_nearby = false;
     enemy = character.surface.find_nearest_enemy{
       position = character.position,
@@ -90,12 +104,11 @@ local function check_player(player)
       force = character.force,
     };
     if (enemy ~= nil) then
-      diag(4, "    Nearby enemy at (" ..
-              enemy.position.x .. "," ..
-              enemy.position.y .. ")");
       enemy_is_nearby = true;
+      label.caption =
+        "HideRepairPacks: Enemies nearby, repair packs hidden (in trash).";
     else
-      diag(4, "    No nearby enemies.");
+      label.caption = "";
     end;
 
     main_inv = character.get_main_inventory();
