@@ -2,6 +2,10 @@
 -- Actions that run while the user is playing the game.
 
 
+-- --------------------------- Configuration ---------------------------
+-- The variable values in this section are overwritten by
+-- configuration settings during initialization.
+
 -- How much to log, from among:
 --   0: Nothing.
 --   1: Only things that indicate a serious problem.  These suggest a
@@ -11,19 +15,30 @@
 --      about being stuck, loading ammo, etc.
 --   3: Changes to internal data structures.
 --   4: Details of algorithms.
--- The default value here is overwritten by a configuration setting
--- during initialization.
-local diagnostic_verbosity = 2;
+local diagnostic_verbosity = 1;
 
 -- Ticks between nearby enemy checks.
 local enemy_check_period_ticks = 60;
 
 
+-- ----------------------------- Functions -----------------------------
 -- Log 'str' if we are at verbosity 'v' or higher.
 local function diag(v, str)
   if (v <= diagnostic_verbosity) then
     log(str);
   end;
+end;
+
+
+-- Re-read the configuration settings.
+--
+-- Below, this is done once on startup, then afterward in response to
+-- the on_runtime_mod_setting_changed event.
+local function read_configuration_settings()
+  diag(3, "read_configuration_settings started");
+  enemy_check_period_ticks = settings.global["hide-repair-packs-enemy-check-period-ticks"].value;
+  diagnostic_verbosity = settings.global["hide-repair-packs-diagnostic-verbosity"].value;
+  diag(3, "read_configuration_settings finished");
 end;
 
 
@@ -88,6 +103,7 @@ local function move_repair_packs(
 end;
 
 
+-- Check for enemies near one player.
 local function check_player(player)
   local character = player.valid and player.character
   if (character and character.valid) then
@@ -126,6 +142,7 @@ local function check_player(player)
 end;
 
 
+-- Check for enemies near all players.
 local function check_all_players()
   diag(4, "Checking all players for nearby enemies.");
   for index, player in pairs(game.players) do
@@ -135,12 +152,21 @@ local function check_all_players()
 end;
 
 
+-- -------------------------- Event handlers ---------------------------
 script.on_event(defines.events.on_tick, function(e)
   -- Possibly check for nearby enemies.
   if ((e.tick % enemy_check_period_ticks) == 0) then
     check_all_players()
   end;
 end);
+
+
+script.on_event(defines.events.on_runtime_mod_setting_changed,
+  read_configuration_settings);
+
+
+-- -------------------------- Initialization ---------------------------
+read_configuration_settings();
 
 
 -- EOF
