@@ -1,0 +1,10 @@
+{
+    "name": "HideRepairPacks",
+    "version": "1.0.0",
+    "title": "Hide Repair Packs",
+    "author": "Scott McPeak",
+    "homepage": "https://github.com/smcpeak/factorio-hide-repair-packs",
+    "factorio_version": "2.0",
+    "dependencies": ["base >= 2.0"],
+    "description": "Hide repair packs from personal robots while enemies are near so that the robots do not repair during the battle."
+}

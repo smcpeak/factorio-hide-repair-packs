@@ -1,0 +1,5 @@
+---------------------------------------------------------------------------------------------------
+Version: 1.0.0 - First public release
+Date: 28.11.2024
+  Major Features:
+    - Hide repair packs when enemies are near.
