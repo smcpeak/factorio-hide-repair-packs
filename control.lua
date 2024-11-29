@@ -67,23 +67,19 @@ local function set_status_label(
   gui_element = player.gui.top;
   local label = gui_element[label_name];
 
-  if (settings.get_player_settings(player.index)["hide-repair-packs-show-enemy-indicator"].value) then
+  local show_label =
+    settings.get_player_settings(player.index)["hide-repair-packs-show-enemy-indicator"].value and
+    enemy_is_nearby;
+
+  if (show_label) then
     if (label == nil) then
-      -- This creates a simple text label in the top-left corner.
+      -- This creates a sprite in the top-left corner.
       diag(4, "Adding indicator element.");
       label = gui_element.add{
-        type = "label",
+        type = "sprite",
         name = label_name,
-        caption = ""};
-    end;
-
-    if (enemy_is_nearby) then
-      label.caption = "HideRepairPacks: Enemies near, repair packs stashed.";
-    else
-      -- Assumption: An empty label will reserve the space, whereas
-      -- removing it entirely would cause other elements to jump around
-      -- when the label is later re-added.
-      label.caption = "";
+        sprite = "hide-repair-packs-no-repair-indicator",
+      };
     end;
 
   else
