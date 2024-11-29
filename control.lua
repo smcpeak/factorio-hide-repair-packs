@@ -99,12 +99,12 @@ local function move_repair_packs(
   local item_name = "repair-pack";
 
   if (dest_inv == nil) then
-    diag(4, "    Missing " .. dest_name .. " inventory.");
+    diag(4, "Missing " .. dest_name .. " inventory.");
     return;
   end;
 
   if (src_inv == nil) then
-    diag(4, "    Missing " .. src_name .. " inventory.");
+    diag(4, "Missing " .. src_name .. " inventory.");
     return;
   end;
 
@@ -129,7 +129,7 @@ local function move_repair_packs(
         diag(1, "Bug: We duplicated items!");
       end;
     else
-      diag(4, "    Failed to add repair packs to " .. dest_name .. ".");
+      diag(4, "Failed to add repair packs to " .. dest_name .. ".");
     end;
   end;
 end;
@@ -161,9 +161,7 @@ end;
 
 -- Check for enemies near all players.
 local function check_all_players()
-  diag(4, "Checking all players for nearby enemies.");
   for index, player in pairs(game.players) do
-    diag(4, "  Player " .. index .. " exists.")
     check_player(player);
   end;
 end;
