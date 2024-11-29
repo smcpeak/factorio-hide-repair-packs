@@ -3,19 +3,19 @@
 
 
 -- --------------------------- Configuration ---------------------------
--- The variable values in this section are overwritten by
--- configuration settings during initialization, but the values here are
+-- The variable values in this section are overwritten by configuration
+-- settings during initialization and after re-reading updated
+-- configuration values, but for ease of reference, the values here are
 -- the same as the defaults in `settings.lua`.
 
 -- How much to log, from among:
 --   0: Nothing.
 --   1: Only things that indicate a serious problem.  These suggest a
---      bug in the RoboTank mod, but are recoverable.
+--      bug in this mod, but are recoverable.
 --   2: Relatively infrequent things possibly of interest to the user,
---      such as changes to the formation of tanks, tanks complaining
---      about being stuck, loading ammo, etc.
---   3: Changes to internal data structures.
---   4: Details of algorithms.
+--      particularly the moving of repair tools.
+--   3: Details of the repair tool movements.
+--   4: Individual algorithm steps only of interest to a developer.
 local diagnostic_verbosity = 1;
 
 -- Time between checks for nearby enemies.
@@ -23,7 +23,6 @@ local enemy_check_period_ticks = 60;
 
 -- Maximum distance to a "nearby" enemy.
 local nearby_enemy_radius = 80;
-
 
 
 -- ------------------------------- Data --------------------------------
@@ -47,13 +46,15 @@ end;
 -- Below, this is done once on startup, then afterward in response to
 -- the on_runtime_mod_setting_changed event.
 local function read_configuration_settings()
-  diag(3, "read_configuration_settings begin");
+  -- Note: Because the diagnostic verbosity is changed here, it is
+  -- possible to see unpaired "begin" or "end" in the log.
+  diag(4, "read_configuration_settings begin");
 
   diagnostic_verbosity =     settings.global["hide-repair-packs-diagnostic-verbosity"].value;
   enemy_check_period_ticks = settings.global["hide-repair-packs-enemy-check-period-ticks"].value;
   nearby_enemy_redius =      settings.global["hide-repair-packs-nearby-enemy-radius"].value;
 
-  diag(3, "read_configuration_settings end");
+  diag(4, "read_configuration_settings end");
 end;
 
 
@@ -69,7 +70,7 @@ local function set_status_label(
   if (settings.get_player_settings(player.index)["hide-repair-packs-show-enemy-indicator"].value) then
     if (label == nil) then
       -- This creates a simple text label in the top-left corner.
-      diag(2, "Adding indicator element.");
+      diag(4, "Adding indicator element.");
       label = gui_element.add{
         type = "label",
         name = label_name,
@@ -88,7 +89,7 @@ local function set_status_label(
   else
     if (label ~= nil) then
       -- Remove the indicator.
-      diag(2, "Removing indicator.");
+      diag(4, "Removing indicator element.");
       label.destroy();
     end;
   end;
@@ -112,6 +113,12 @@ local function move_repair_packs(
     diag(4, "Missing " .. src_name .. " inventory.");
     return;
   end;
+
+  -- Total number of items moved.
+  local total_move_count = 0;
+
+  -- True if some attempted move could not be completed.
+  local was_incomplete = false;
 
   -- Next candidate destination inventory slot.
   local dest_inv_slot_num = 1;
@@ -144,24 +151,47 @@ local function move_repair_packs(
         -- Swap the stacks to effect a lossless, dup-less transfer.
         local dest_stack = dest_inv[dest_inv_slot_num];
         if (src_stack.swap_stack(dest_stack)) then
-          diag(2, message ..
+          diag(3, message ..
                   "  We swapped them with slot " .. dest_inv_slot_num ..
                   " of " .. dest_name .. " inventory.");
+          total_move_count = total_move_count + dest_stack.count
+
         else
           diag(1, message ..
                   "  We failed to swap them with slot " .. dest_inv_slot_num ..
                   " of " .. dest_name .. " inventory.");
-          return;
+          was_incomplete = true;
+          break;
+
         end;
 
       else
-        diag(2, message ..
+        diag(3, message ..
                 "  However, there are no empty stacks in " .. dest_name ..
                 " inventory.  (We stop examining more " .. src_name ..
                 " stacks consequently.)");
-        return;
+        was_incomplete = true;
+        break;
+
       end;
     end;
+  end;
+
+  if (total_move_count > 0 or was_incomplete) then
+    local inc_message = "";
+    if (was_incomplete) then
+      inc_message = "  However, some tools could not be moved.";
+      if (diagnostic_verbosity < 3) then
+        inc_message = inc_message ..
+                      "  Increase the logging verbosity to 3 to see details.";
+      end;
+    end;
+
+    diag(2, "Player " .. player.index ..
+            ": Moved " .. total_move_count ..
+            " repair tools from " .. src_name ..
+            " to " .. dest_name ..
+            " inventory." .. inc_message);
   end;
 end;
 
@@ -184,7 +214,7 @@ local function check_player(player)
       -- No need to update anything.
 
     else
-      diag(3, "enemy_is_nearby is different");
+      diag(4, "enemy_is_nearby is different");
       set_status_label(player, enemy_is_nearby);
 
       main_inv = character.get_main_inventory();
