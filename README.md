@@ -54,7 +54,7 @@ scan result changes very infrequently, those costs are negligible.
 ## Possible extensions
 
 It would be desirable to extend this to work with regular roboports too
-so they could be positioned near walls that are frequently come under
+so they could be positioned near walls that frequently come under
 attack.  However, some changes would have to be made to account for the
 much larger number of places to scan, the lack of a convenient "trash"
 slot in roboports, and for the fact that robots will potentially take
