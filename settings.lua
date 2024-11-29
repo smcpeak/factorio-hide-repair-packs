@@ -21,6 +21,16 @@ data:extend({
     default_value = true,
   },
 
+  -- Whether to do anything for this player.  A player can disable the
+  -- hiding behavior if, say, they want to do something with repair
+  -- packs while near enemies.
+  {
+    type = "bool-setting",
+    name = "hide-repair-packs-enable-mod",
+    setting_type = "runtime-per-user",
+    default_value = true,
+  },
+
   -- Time between checks for nearby enemies.
   {
     type = "int-setting",

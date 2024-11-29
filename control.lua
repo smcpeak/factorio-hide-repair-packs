@@ -201,12 +201,20 @@ local function check_player(player)
   local character = player.valid and player.character
   if (character and character.valid) then
     -- Is an enemy nearby?
-    local enemy = character.surface.find_nearest_enemy{
-      position = character.position,
-      max_distance = nearby_enemy_redius,
-      force = character.force,
-    };
-    local enemy_is_nearby = (enemy ~= nil);
+    local enemy_is_nearby = false;
+    if (settings.get_player_settings(player.index)["hide-repair-packs-enable-mod"].value) then
+      local enemy = character.surface.find_nearest_enemy{
+        position = character.position,
+        max_distance = nearby_enemy_redius,
+        force = character.force,
+      };
+      enemy_is_nearby = (enemy ~= nil);
+    else
+      -- When the mod is "disabled" for a player, behave as though there
+      -- are never enemies nearby.  (In contrast, simply returning at
+      -- the top of this function leads to bugs where the status display
+      -- remains if it was active at the time the mod was disabled.)
+    end;
 
     -- Is this different from the last time we checked?
     local previous = player_to_enemy_is_nearby[player.index];
