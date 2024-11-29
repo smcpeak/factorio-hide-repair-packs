@@ -98,12 +98,10 @@ end;
 -- Move all of the repair packs that are in `src_inv` to `dest_inv`.
 local function move_repair_packs(
   player,          -- LuaPlayer: Player whose inventory we are operating on.
-  dest_inv,        -- LuaInventory: Destination.
+  dest_inv,        -- LuaInventory: Destination inventory.
   dest_name,       -- string: Name of destination for diagnostics.
-  src_inv,         -- LuaInventory: Source.
+  src_inv,         -- LuaInventory: Source inventory.
   src_name)        -- string: Name of source for diagnostics.
-
-  local item_name = "repair-pack";
 
   if (dest_inv == nil) then
     diag(4, "Missing " .. dest_name .. " inventory.");
@@ -115,28 +113,54 @@ local function move_repair_packs(
     return;
   end;
 
-  local ct = src_inv.get_item_count(item_name);
-  if (ct > 0) then
-    local num_inserted = dest_inv.insert(
-      {name=item_name, count=ct});
-    if (num_inserted > 0) then
-      local num_removed = src_inv.remove(
-        {name=item_name, count=num_inserted});
+  -- Next candidate destination inventory slot.
+  local dest_inv_slot_num = 1;
 
-      diag(2, "Player " .. player.index ..
-              " (" .. player.name ..
-              ") has " .. ct ..
-              " repair packs in " .. src_name ..
-              " inventory.  Added " .. num_inserted ..
-              " packs to " .. dest_name ..
-              ", removed " .. num_removed ..
-              " packs from " .. src_name .. ".");
+  -- Iterate over the source slots, examining the stacks therein.
+  -- Operating at the slot granularity ensures we do not lose
+  -- information about durability, freshness, etc., when moving items
+  -- between inventories.
+  for src_inv_slot_num = 1, #src_inv do
+    -- Look for any repair tool, rather than just the repair-pack from
+    -- the base game.
+    local src_stack = src_inv[src_inv_slot_num];
+    if (src_stack.count > 0 and
+        prototypes.item[src_stack.name].type == "repair-tool") then
+      local message =
+        "Player " .. player.index ..
+        ": " .. src_name ..
+        " inventory slot " .. src_inv_slot_num ..
+        " has " .. src_stack.count ..
+        "x " .. src_stack.name ..
+        ".";
 
-      if (num_removed ~= num_inserted) then
-        diag(1, "Bug: We duplicated items!");
+      -- Look for an empty slot in the destination inventory.
+      while (dest_inv_slot_num <= #dest_inv and
+             dest_inv[dest_inv_slot_num].count > 0) do
+        dest_inv_slot_num = dest_inv_slot_num + 1;
       end;
-    else
-      diag(4, "Failed to add repair packs to " .. dest_name .. ".");
+
+      if (dest_inv_slot_num <= #dest_inv) then
+        -- Swap the stacks to effect a lossless, dup-less transfer.
+        local dest_stack = dest_inv[dest_inv_slot_num];
+        if (src_stack.swap_stack(dest_stack)) then
+          diag(2, message ..
+                  "  We swapped them with slot " .. dest_inv_slot_num ..
+                  " of " .. dest_name .. " inventory.");
+        else
+          diag(1, message ..
+                  "  We failed to swap them with slot " .. dest_inv_slot_num ..
+                  " of " .. dest_name .. " inventory.");
+          return;
+        end;
+
+      else
+        diag(2, message ..
+                "  However, there are no empty stacks in " .. dest_name ..
+                " inventory.  (We stop examining more " .. src_name ..
+                " stacks consequently.)");
+        return;
+      end;
     end;
   end;
 end;
