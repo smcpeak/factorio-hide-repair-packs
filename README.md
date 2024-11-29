@@ -51,6 +51,11 @@ The inventory check and transfers are only performed if the enemy scan
 result (as a boolean) is different from the previous scan.  Since the
 scan result changes very infrequently, those costs are negligible.
 
+## Uninstallation
+
+To uninstall, just remove the mod.  It does not add any entities or
+other save-game state, so removal is non-destructive.
+
 ## Possible extensions
 
 It would be desirable to extend this to work with regular roboports too
