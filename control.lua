@@ -113,11 +113,8 @@ local function move_repair_packs(
   -- Total number of items moved.
   local total_move_count = 0;
 
-  -- True if some attempted move could not be completed.
-  local was_incomplete = false;
-
-  -- Next candidate destination inventory slot.
-  local dest_inv_slot_num = 1;
+  -- Message fragment to include regarding incomplete movement.
+  local incomplete_message = "";
 
   -- Iterate over the source slots, examining the stacks therein.
   -- Operating at the slot granularity ensures we do not lose
@@ -137,15 +134,28 @@ local function move_repair_packs(
         "x " .. src_stack.name ..
         ".";
 
-      -- Look for an empty slot in the destination inventory.
-      while (dest_inv_slot_num <= #dest_inv and
-             dest_inv[dest_inv_slot_num].count > 0) do
-        dest_inv_slot_num = dest_inv_slot_num + 1;
-      end;
+      -- Find an empty slot in the destination inventory.
+      --
+      -- Calling `find_empty_stack` is better than iterating and
+      -- checking for `count > 0` because empty slots can have item
+      -- filters, and the slot that contained the item currently held in
+      -- the hand (if any) is also special, and in both cases the swap
+      -- would fail.
+      --
+      -- Passing `src_stack` to `find_empty_stack` means this call
+      -- *will* return a slot that is filtered if the filter is
+      -- compatible with what is in `src_stack`.
+      --
+      local dest_stack, dest_inv_slot_num = dest_inv.find_empty_stack(src_stack);
+      if (dest_stack == nil) then
+        incomplete_message =
+          "  However, there are no more empty stacks in " .. dest_name ..
+          " inventory.  (We stop examining more " .. src_name ..
+          " stacks consequently.)";
+        break;
 
-      if (dest_inv_slot_num <= #dest_inv) then
+      else
         -- Swap the stacks to effect a lossless, dup-less transfer.
-        local dest_stack = dest_inv[dest_inv_slot_num];
         if (src_stack.swap_stack(dest_stack)) then
           diag(3, message ..
                   "  We swapped them with slot " .. dest_inv_slot_num ..
@@ -153,41 +163,24 @@ local function move_repair_packs(
           total_move_count = total_move_count + dest_stack.count
 
         else
-          diag(1, message ..
-                  "  We failed to swap them with slot " .. dest_inv_slot_num ..
-                  " of " .. dest_name .. " inventory.");
-          was_incomplete = true;
+          incomplete_message =
+            "  BUG: We failed to swap them with slot " .. dest_inv_slot_num ..
+            " of " .. dest_name ..
+            " inventory: " .. serpent.line(dest_stack);
+          diag(1, incomplete_message)
           break;
 
         end;
-
-      else
-        diag(3, message ..
-                "  However, there are no empty stacks in " .. dest_name ..
-                " inventory.  (We stop examining more " .. src_name ..
-                " stacks consequently.)");
-        was_incomplete = true;
-        break;
-
       end;
     end;
   end;
 
-  if (total_move_count > 0 or was_incomplete) then
-    local inc_message = "";
-    if (was_incomplete) then
-      inc_message = "  However, some tools could not be moved.";
-      if (diagnostic_verbosity < 3) then
-        inc_message = inc_message ..
-                      "  Increase the logging verbosity to 3 to see details.";
-      end;
-    end;
-
+  if (total_move_count > 0 or incomplete_message ~= "") then
     diag(2, "Player " .. player.index ..
             ": Moved " .. total_move_count ..
             " repair tools from " .. src_name ..
             " to " .. dest_name ..
-            " inventory." .. inc_message);
+            " inventory." .. incomplete_message);
   end;
 end;
 
