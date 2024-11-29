@@ -26,6 +26,13 @@ local nearby_enemy_radius = 80;
 
 
 
+-- ------------------------------- Data --------------------------------
+-- Map from player index to their current nearby-enemy state.  This is
+-- populated as needed.  Its purpose is to optimize away unnecessary
+-- updates.
+local player_to_enemy_is_nearby = {};
+
+
 -- ----------------------------- Functions -----------------------------
 -- Log 'str' if we are at verbosity 'v' or higher.
 local function diag(v, str)
@@ -139,21 +146,33 @@ end;
 local function check_player(player)
   local character = player.valid and player.character
   if (character and character.valid) then
+    -- Is an enemy nearby?
     local enemy = character.surface.find_nearest_enemy{
       position = character.position,
       max_distance = nearby_enemy_redius,
       force = character.force,
     };
     local enemy_is_nearby = (enemy ~= nil);
-    set_status_label(player, enemy_is_nearby);
 
-    main_inv = character.get_main_inventory();
-    trash_inv = character.get_inventory(defines.inventory.character_trash);
+    -- Is this different from the last time we checked?
+    local previous = player_to_enemy_is_nearby[player.index];
+    if (previous == enemy_is_nearby) then
+      -- No need to update anything.
 
-    if (enemy_is_nearby) then
-      move_repair_packs(player, trash_inv, "trash", main_inv, "main");
     else
-      move_repair_packs(player, main_inv, "main", trash_inv, "trash");
+      diag(3, "enemy_is_nearby is different");
+      set_status_label(player, enemy_is_nearby);
+
+      main_inv = character.get_main_inventory();
+      trash_inv = character.get_inventory(defines.inventory.character_trash);
+
+      if (enemy_is_nearby) then
+        move_repair_packs(player, trash_inv, "trash", main_inv, "main");
+      else
+        move_repair_packs(player, main_inv, "main", trash_inv, "trash");
+      end;
+
+      player_to_enemy_is_nearby[player.index] = enemy_is_nearby;
     end;
   end;
 end;
