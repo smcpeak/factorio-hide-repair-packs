@@ -4,7 +4,8 @@
 
 -- --------------------------- Configuration ---------------------------
 -- The variable values in this section are overwritten by
--- configuration settings during initialization.
+-- configuration settings during initialization, but the values here are
+-- the same as the defaults in `settings.lua`.
 
 -- How much to log, from among:
 --   0: Nothing.
@@ -17,8 +18,12 @@
 --   4: Details of algorithms.
 local diagnostic_verbosity = 1;
 
--- Ticks between nearby enemy checks.
+-- Time between checks for nearby enemies.
 local enemy_check_period_ticks = 60;
+
+-- Maximum distance to a "nearby" enemy.
+local nearby_enemy_radius = 80;
+
 
 
 -- ----------------------------- Functions -----------------------------
@@ -35,22 +40,51 @@ end;
 -- Below, this is done once on startup, then afterward in response to
 -- the on_runtime_mod_setting_changed event.
 local function read_configuration_settings()
-  diag(3, "read_configuration_settings started");
+  diag(3, "read_configuration_settings begin");
+
+  diagnostic_verbosity =     settings.global["hide-repair-packs-diagnostic-verbosity"].value;
   enemy_check_period_ticks = settings.global["hide-repair-packs-enemy-check-period-ticks"].value;
-  diagnostic_verbosity = settings.global["hide-repair-packs-diagnostic-verbosity"].value;
-  diag(3, "read_configuration_settings finished");
+  nearby_enemy_redius =      settings.global["hide-repair-packs-nearby-enemy-radius"].value;
+
+  diag(3, "read_configuration_settings end");
 end;
 
 
--- Get or create the status label.
-local function get_status_label(player)
+-- Update the status label.
+local function set_status_label(
+  player,          -- LuaPlayer: Player whose GUI we want to update.
+  enemy_is_nearby) -- boolean: True if enemies present.
+
+  local label_name = "hide-repair-packs-status";
   gui_element = player.gui.top;
-  local label = gui_element["hrp_status"];
-  if (label == nil) then
-    -- This creates a simple text label in the top-left corner.
-    label = gui_element.add{type="label", name="hrp_status", caption=""}
+  local label = gui_element[label_name];
+
+  if (settings.get_player_settings(player.index)["hide-repair-packs-show-enemy-indicator"].value) then
+    if (label == nil) then
+      -- This creates a simple text label in the top-left corner.
+      diag(2, "Adding indicator element.");
+      label = gui_element.add{
+        type = "label",
+        name = label_name,
+        caption = ""};
+    end;
+
+    if (enemy_is_nearby) then
+      label.caption = "HideRepairPacks: Enemies near, repair packs stashed.";
+    else
+      -- Assumption: An empty label will reserve the space, whereas
+      -- removing it entirely would cause other elements to jump around
+      -- when the label is later re-added.
+      label.caption = "";
+    end;
+
+  else
+    if (label ~= nil) then
+      -- Remove the indicator.
+      diag(2, "Removing indicator.");
+      label.destroy();
+    end;
   end;
-  return label;
 end;
 
 
@@ -97,8 +131,6 @@ local function move_repair_packs(
     else
       diag(4, "    Failed to add repair packs to " .. dest_name .. ".");
     end;
-  else
-    diag(4, "    No repair packs in " .. src_name .. " inventory.");
   end;
 end;
 
@@ -107,25 +139,13 @@ end;
 local function check_player(player)
   local character = player.valid and player.character
   if (character and character.valid) then
-    diag(4, "    x: " .. character.position.x);
-    diag(4, "    y: " .. character.position.y);
-    diag(4, "    surface: " .. character.surface.name);
-
-    local label = get_status_label(player);
-
-    local enemy_is_nearby = false;
-    enemy = character.surface.find_nearest_enemy{
+    local enemy = character.surface.find_nearest_enemy{
       position = character.position,
-      max_distance = 100,
+      max_distance = nearby_enemy_redius,
       force = character.force,
     };
-    if (enemy ~= nil) then
-      enemy_is_nearby = true;
-      label.caption =
-        "HideRepairPacks: Enemies nearby, repair packs hidden (in trash).";
-    else
-      label.caption = "";
-    end;
+    local enemy_is_nearby = (enemy ~= nil);
+    set_status_label(player, enemy_is_nearby);
 
     main_inv = character.get_main_inventory();
     trash_inv = character.get_inventory(defines.inventory.character_trash);
@@ -135,9 +155,6 @@ local function check_player(player)
     else
       move_repair_packs(player, main_inv, "main", trash_inv, "trash");
     end;
-
-  else
-    diag(4, "    No character.");
   end;
 end;
 
