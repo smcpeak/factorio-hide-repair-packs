@@ -41,11 +41,9 @@ however.
 ## Performance considerations
 
 The mod periodically scans for nearby enemies, by default once per
-second (60 ticks).  Each scan takes about 50us on a medium size map with
-the default range, for an amortized cost of about 1 us per tick,
-although the minimum time just to enter and leave the tick handler (in
-order to check whether it is time to scan) is about 10 us per tick due
-to Lua overhead, and thus that is the typical run-time cost.
+second (60 ticks).  Each scan takes about 50us on a medium size map (that
+is just what I tested; I have not noticed a dependence on map size) with
+the default range, for an amortized cost of about 1 us per tick.
 
 The inventory check and transfers are only performed if the enemy scan
 result (as a boolean) is different from the previous scan.  Since the

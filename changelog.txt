@@ -1,5 +1,10 @@
 ---------------------------------------------------------------------------------------------------
-Version: 1.0.0 - First public release
-Date: 28.11.2024
+Version: 1.0.0
+Date: 2024-11-28
   Major Features:
     - Hide repair packs when enemies are near.
+---------------------------------------------------------------------------------------------------
+Version: 1.1.0
+Date: 2024-12-02
+  Changes:
+    - Improve performance by using `on_nth_tick` instead of `on_event`.

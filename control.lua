@@ -33,6 +33,10 @@ local player_to_enemy_is_nearby = {};
 
 
 -- ----------------------------- Functions -----------------------------
+-- Forward declarations of functions.
+local check_all_players;
+
+
 -- Log 'str' if we are at verbosity 'v' or higher.
 local function diag(v, str)
   if (v <= diagnostic_verbosity) then
@@ -50,9 +54,17 @@ local function read_configuration_settings()
   -- possible to see unpaired "begin" or "end" in the log.
   diag(4, "read_configuration_settings begin");
 
+  -- Clear any existing tick handler.
+  script.on_nth_tick(nil);
+
   diagnostic_verbosity =     settings.global["hide-repair-packs-diagnostic-verbosity"].value;
   enemy_check_period_ticks = settings.global["hide-repair-packs-enemy-check-period-ticks"].value;
   nearby_enemy_redius =      settings.global["hide-repair-packs-nearby-enemy-radius"].value;
+
+  -- Re-establish the tick handler with the new period.
+  script.on_nth_tick(enemy_check_period_ticks, function(e)
+    check_all_players();
+  end);
 
   diag(4, "read_configuration_settings end");
 end;
@@ -230,7 +242,7 @@ end;
 
 
 -- Check for enemies near all players.
-local function check_all_players()
+check_all_players = function()
   for index, player in pairs(game.players) do
     check_player(player);
   end;
@@ -238,12 +250,9 @@ end;
 
 
 -- -------------------------- Event handlers ---------------------------
-script.on_event(defines.events.on_tick, function(e)
-  -- Possibly check for nearby enemies.
-  if ((e.tick % enemy_check_period_ticks) == 0) then
-    check_all_players()
-  end;
-end);
+-- Rather than using `on_tick`, this mod uses `on_nth_tick`, which is
+-- called by `read_configuration_settings` (since the check period
+-- depends on the configuration).
 
 
 script.on_event(defines.events.on_runtime_mod_setting_changed,
